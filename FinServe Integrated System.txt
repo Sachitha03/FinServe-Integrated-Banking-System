@@ -1,0 +1,385 @@
+# Database.java
+
+
+import java.sql.*;
+import java.util.Scanner;
+
+public class Database {
+    private static final String DB_URL = "jdbc:sqlite:banking.db";
+
+    public static Connection connect() {
+        Connection conn = null;
+        try {
+            conn = DriverManager.getConnection(DB_URL);
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+        return conn;
+    }
+
+    public static void createNewDatabase() {
+        try (Connection conn = DriverManager.getConnection(DB_URL)) {
+            if (conn != null) {
+                DatabaseMetaData meta = conn.getMetaData();
+                System.out.println("The driver name is " + meta.getDriverName());
+                System.out.println("A new database has been created.");
+                createTables(); // Create tables after database creation
+            }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public static void createTables() {
+        String sql = "CREATE TABLE IF NOT EXISTS accounts ("
+                + " accNum INTEGER PRIMARY KEY,"
+                + " CustName TEXT NOT NULL,"
+                + " branch TEXT NOT NULL,"
+                + " role TEXT NOT NULL,"
+                + " phonenum TEXT,"
+                + " balance REAL,"
+                + " annual_income REAL"
+                + ");";
+
+        try (Connection conn = connect();
+                Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public static void insertAccount(FinServe account) {
+        String sql = "INSERT INTO accounts(accNum, CustName, branch, role, phonenum, balance, annual_income) VALUES("
+                + account.accNum + ","
+                + "'" + account.CustName + "',"
+                + "'" + account.branch + "',"
+                + "'" + account.role + "',"
+                + "'" + account.phonenum + "',"
+                + account.balance + ","
+                + account.annual_income + ");";
+
+        try (Connection conn = connect();
+                Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+
+    public static FinServe getAccount(int accNum) {
+        String sql = "SELECT * FROM accounts WHERE accNum = " + accNum;
+        FinServe account = null;
+
+        try (Connection conn = connect();
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
+            if (rs.next()) {
+                if (rs.getString("role").equals("2") || rs.getString("role").equals("4")) {
+                    account = new SavingsAccount();
+                } else {
+                    account = new CurrentAccount();
+                }
+                account.accNum = rs.getInt("accNum");
+                account.CustName = rs.getString("CustName");
+                account.branch = rs.getString("branch");
+                account.role = rs.getString("role");
+                account.phonenum = rs.getString("phonenum");
+                account.balance = rs.getDouble("balance");
+                account.annual_income = rs.getDouble("annual_income");
+            }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+        return account;
+    }
+
+    public static void updateAccount(FinServe account) {
+        String sql = "UPDATE accounts SET "
+                + "CustName = '" + account.CustName + "', "
+                + "branch = '" + account.branch + "', "
+                + "role = '" + account.role + "', "
+                + "phonenum = '" + account.phonenum + "', "
+                + "balance = " + account.balance + ", "
+                + "annual_income = " + account.annual_income
+                + " WHERE accNum = " + account.accNum;
+
+        try (Connection conn = connect();
+                Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
+}
+
+# FinServe.java
+
+import java.util.Scanner;
+
+abstract class FinServe {
+    protected String CustName, branch, role;
+    protected int accNum;
+    protected String phonenum;
+    protected double balance, annual_income;
+
+    public void inputCustData() {
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Enter customer name: ");
+        CustName = sc.next();
+        System.out.println("Enter 10 digit phone number: ");
+        phonenum = sc.next();
+        System.out.println("Enter account number: ");
+        accNum = sc.nextInt();
+        System.out.println("Enter branch: ");
+        branch = sc.next();
+        System.out.println(
+                "Choose your role from the following: \n 1. Student \n 2. Working \n 3. Dependent \n 4. Business");
+        role = sc.next();
+        if ("2".equals(role) || "4".equals(role)) {
+            System.out.println("Annual Salary: ");
+            annual_income = sc.nextDouble();
+        }
+        System.out.println("Enter initial balance: ");
+        balance = sc.nextDouble();
+
+        Database.insertAccount(this); // Save account to database
+    }
+
+    public void showCustData() {
+        System.out.println("--------------------------CUSTOMER DETAILS--------------------");
+        System.out.println("Account Number: " + accNum);
+        System.out.println("Customer name: " + CustName);
+        System.out.println("Account Branch: " + branch);
+        System.out.println("Role: " + role);
+        System.out.println("Annual income: " + annual_income);
+        System.out.println("Initial Balance: " + balance);
+    }
+
+    public abstract void deposit(double amount);
+
+    public abstract void withdraw(double amount);
+
+    public abstract void loan(double amount);
+}
+
+
+# BankAccount.java
+
+import java.util.Scanner;
+
+class BankAccount extends FinServe {
+
+    @Override
+    public void deposit(double amount) {
+        Scanner sc1 = new Scanner(System.in);
+        System.out.println("Enter deposit amount: ");
+        amount = sc1.nextDouble();
+        balance += amount;
+        Database.updateAccount(this);
+        System.out.println("Deposit successful! New balance: " + balance);
+    }
+
+    @Override
+    public void withdraw(double amount) {
+        Scanner sc2 = new Scanner(System.in);
+        System.out.println("Enter withdrawal amount: ");
+        amount = sc2.nextDouble();
+        if (balance >= amount) {
+            balance -= amount;
+            Database.updateAccount(this);
+            System.out.println("Withdrawal successful. New Balance: " + balance);
+        } else {
+            System.out.println("Insufficient Balance: " + balance);
+        }
+    }
+
+    @Override
+    public void loan(double amount) {
+        Scanner sc3 = new Scanner(System.in);
+        System.out.println("Enter loan amount: ");
+        amount = sc3.nextDouble();
+        if (balance * 2 <= amount) {
+            System.out.println("Loan approved for account number " + accNum);
+        } else {
+            System.out.println("Loan rejected. Insufficient collateral.");
+        }
+    }
+}
+
+#SavingsAccount.java
+
+import java.util.Scanner;
+
+class SavingsAccount extends FinServe {
+    private static final double MIN_BALANCE = 101.0;
+
+    @Override
+    public void deposit(double amount) {
+        Scanner sc1 = new Scanner(System.in);
+        System.out.println("Enter deposit amount: ");
+        amount = sc1.nextDouble();
+        balance += amount;
+        Database.updateAccount(this);
+        System.out.println("Deposit successful! New balance: " + balance);
+    }
+
+    @Override
+    public void withdraw(double amount) {
+        Scanner sc2 = new Scanner(System.in);
+        System.out.println("Enter withdrawal amount: ");
+        amount = sc2.nextDouble();
+        if (balance - amount >= MIN_BALANCE) {
+            balance -= amount;
+            Database.updateAccount(this); // Update account in database
+            System.out.println("Withdrawal successful. New Balance: " + balance);
+        } else {
+            System.out.println("Insufficient Balance: " + balance);
+        }
+    }
+
+    @Override
+    public void loan(double amount) {
+        Scanner sc3 = new Scanner(System.in);
+        System.out.println("Enter loan amount: ");
+        amount = sc3.nextDouble();
+        if ("1".equals(role) || "3".equals(role)) {
+            System.out.println("Client not applicable for loan");
+        } else {
+            if (balance * 2 <= amount) {
+                System.out.println(
+                        "Loan for applicant holding account number " + accNum + " is approved for Amount : " + amount);
+            } else {
+                System.out.println("Loan for applicant holding account number " + accNum + " has been rejected ");
+            }
+        }
+    }
+}
+
+
+# CurrentAccount.java
+
+import java.util.Scanner;
+
+class CurrentAccount extends BankAccount {
+  private static final double OVERDRAFT_LIMIT = 10000.0;
+
+  @Override
+  public void deposit(double amount) {
+    balance += amount;
+    Database.updateAccount(this); // Update account in database
+    System.out.println("Deposit successful. New Balance: " + balance);
+  }
+
+  @Override
+  public void withdraw(double amount) {
+    if (balance + OVERDRAFT_LIMIT >= amount) {
+      balance -= amount;
+      Database.updateAccount(this); // Update account in database
+      System.out.println("Withdrawal successful. New Balance: " + balance);
+    } else {
+      System.out.println("Withdrawal exceeds overdraft limit. New Balance: " + balance);
+    }
+  }
+
+  @Override
+  public void loan(double amount) {
+    if ("4".equals(role)) {
+      if (annual_income * 0.18 < amount) {
+        System.out.println("Loan approved for account number: " + accNum);
+      } else {
+        System.out.println("Loan rejected");
+      }
+    }
+  }
+}
+
+
+# InterestRate.java
+
+import java.sql.*;
+import java.util.*;
+
+class InterestRate {
+  public void applyInterest(BankAccount account) {
+ 
+    double interestRate = 0.05; 
+    double interest = account.balance * interestRate;
+    account.balance += interest;
+    Database.updateAccount(account); 
+    System.out.println("Interest applied. New Balance: " + account.balance);
+  }
+}
+
+
+#NetBanking.java
+
+import java.sql.*;
+import java.util.*;
+
+class NetBanking extends BankAccount {
+  public void loginCredentials(String username, String password) {
+    Scanner sc4 = new Scanner(System.in);
+    System.out.println("Enter username: ");
+    username = sc4.nextLine();
+    System.out.println("Enter password: ");
+    password = sc4.nextLine();
+
+ 
+    System.out.println("Logging in with username: " + username);
+  }
+}
+
+
+# BankingSystem.java
+
+import java.sql.*;
+import java.util.*;
+
+class BankingSystem {
+  public static void main(String[] args) {
+    Scanner sc5 = new Scanner(System.in);
+    InterestRate ir = new InterestRate();
+    Database.createNewDatabase(); 
+
+    
+    System.out.println("Welcome to the FinServe Banking System");
+
+    
+    System.out.println("Choose Account Type: \n 1. Savings Account \n 2. Current Account");
+    int choice = sc5.nextInt();
+    FinServe account;
+  
+    BankAccount bankAccount = null;
+    if (choice == 1) {
+      SavingsAccount savingsAccount = new SavingsAccount();
+    } else if (choice == 2) {
+      CurrentAccount currentAccount = new CurrentAccount();
+    } else {
+      System.out.println("Invalid choice.");
+      sc5.close();
+      return;
+    }
+
+    bankAccount.inputCustData(); 
+    
+    ir.applyInterest(bankAccount);
+
+    // Logging into net banking
+    NetBanking netBanking = new NetBanking();
+    netBanking.loginCredentials("username", "password");
+
+    // Showing customer details
+    bankAccount.showCustData();
+
+    bankAccount.deposit(500.0);
+    bankAccount.withdraw(200.0);
+    bankAccount.loan(1000.0);
+
+    // Showing updated customer details
+    bankAccount.showCustData();
+
+    sc5.close();
+  }
+}
+
