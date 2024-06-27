@@ -1,0 +1,331 @@
+import java.util.Scanner;
+
+abstract class BankAccount {
+    protected String CustName, branch, role;
+    protected int accNum;
+    protected long phonenum;
+    protected double balance, annual_income;
+
+    public void inputCustData() {
+        Scanner sc = new Scanner(System.in);
+        System.out.println("Enter customer name: ");
+        CustName = sc.next();
+        System.out.println("Enter 10 digit phone number: ");
+        phonenum = sc.nextLong();
+        System.out.println("Enter account number: ");
+        accNum = sc.nextInt();
+        System.out.println("Enter branch: ");
+        branch = sc.next();
+        System.out.println(
+                "Choose your role from the following: \n 1. Student \n 2. Working \n 3. Dependent \n 4. Business");
+        role = sc.next();
+        if ("2".equals(role) || "4".equals(role)) {
+            System.out.println("Annual Salary: ");
+            annual_income = sc.nextDouble();
+        }
+        System.out.println("Enter initial balance: ");
+        balance = sc.nextDouble();
+    }
+
+    public void showCustData() {
+        System.out.println("--------------------------CUSTOMER DETAILS--------------------");
+        System.out.println("Account Number: " + accNum);
+        System.out.println("Customer name: " + CustName);
+        System.out.println("Account Branch: " + branch);
+        System.out.println("Role: " + role);
+        System.out.println("Annual income: " + annual_income);
+        System.out.println("Initial Balance: " + balance);
+    }
+
+    public abstract void deposit(double amount);
+
+    public abstract void withdraw(double amount);
+
+    public abstract void loan(double amount);
+}
+
+class SavingsAccount extends BankAccount {
+    private static final double MIN_BALANCE = 101.0;
+
+    @Override
+    public void deposit(double amount) {
+        Scanner sc1 = new Scanner(System.in);
+        System.out.println("Enter deposit amount: ");
+        amount = sc1.nextDouble();
+        balance += amount;
+        System.out.println("Deposit successful! New balance: " + balance);
+    }
+
+    @Override
+    public void withdraw(double amount) {
+        Scanner sc2 = new Scanner(System.in);
+        System.out.println("Enter withdrawal amount: ");
+        amount = sc2.nextDouble();
+        if (balance - amount >= MIN_BALANCE) {
+            balance -= amount;
+            System.out.println("Withdrawal successful. New Balance: " + balance);
+        } else {
+            System.out.println("Insufficient Balance: " + balance);
+        }
+    }
+
+    @Override
+    public void loan(double amount) {
+        Scanner sc3 = new Scanner(System.in);
+        System.out.println("Enter loan amount: ");
+        amount = sc3.nextDouble();
+        if ("1".equals(role) || "3".equals(role)) {
+            System.out.println("Client not applicable for loan");
+        } else {
+            if (balance * 2 <= amount) {
+                System.out.println(
+                        "Loan for applicant holding account number " + accNum + " is approved for Amount : " + amount);
+            } else {
+                System.out.println("Loan for applicant holding account number " + accNum + " has been rejected ");
+            }
+        }
+    }
+}
+
+class CurrentAccount extends BankAccount {
+    private static final double OVERDRAFT_LIMIT = 10000.0;
+
+    @Override
+    public void deposit(double amount) {
+        balance += amount;
+        System.out.println("Deposit successful. New Balance: " + balance);
+    }
+
+    @Override
+    public void withdraw(double amount) {
+        if (balance + OVERDRAFT_LIMIT >= amount) {
+            balance -= amount;
+            System.out.println("Withdrawal successful. New Balance: " + balance);
+        } else {
+            System.out.println("Withdrawal exceeds overdraft limit. New Balance: " + balance);
+        }
+    }
+
+    @Override
+    public void loan(double amount) {
+        while ("4".equals(role)) {
+            if (annual_income * 0.18 < amount) {
+                System.out.println("Loan approved for account number: " + accNum);
+            } else {
+                System.out.println("Loan rejected");
+            }
+        }
+    }
+}
+
+class InterestRate {
+    public void applyInterest(SavingsAccount account) {
+        double interest = account.balance * 0.05;
+        account.deposit(interest);
+        System.out.println("Interest of " + interest + " applied to Savings account");
+    }
+
+    public void applyInterest(CurrentAccount account) {
+        double interest = account.balance * 0.04;
+        account.deposit(interest);
+        System.out.println("Interest of " + interest + " applied to Current Account");
+    }
+}
+
+class NetBanking extends BankAccount {
+    public void loginCredentials(String username, String password) {
+        Scanner sc4 = new Scanner(System.in);
+        System.out.println("Account number: " + accNum);
+        System.out.println("Phone number: " + phonenum);
+        System.out.println("Account holder name: " + CustName);
+        System.out.println("Create username for net banking: ");
+        username = sc4.next();
+        System.out.println("Create password for net banking: ");
+        password = sc4.next();
+        System.out.println("Available Balance:" + balance);
+    }
+
+    @Override
+    public void deposit(double transfer) {
+        Scanner sc4 = new Scanner(System.in);
+        System.out.println("Choose mode of transfer: \n 1. NEFT \n 2. RTGS \n 3.IMPS \n 4. UPI : ");
+        String mode = sc4.next();
+        System.out.println("Enter account number of the account to be transferred: ");
+        int accNumber = sc4.nextInt();
+        System.out.println("Enter amount to be deposited: " + transfer);
+        balance -= transfer;
+        System.out.println("Current balance: " + balance);
+    }
+}
+
+class BankingSystem {
+    public static void main(String[] args) {
+        Scanner sc5 = new Scanner(System.in);
+        InterestRate ir = new InterestRate();
+        BankAccount[] accounts = new BankAccount[10]; // Assuming a maximum of 10 accounts
+        int accountCount = 0;
+
+        while (true) {
+            System.out.println(
+                    "MENU:\n 1. Create account \n 2. Show Account Holder details \n 3. Savings Account \n 4. Current Account \n 5. Apply interest \n 6. NetBanking \n 7. Exit");
+            int choice = sc5.nextInt();
+
+            switch (choice) {
+                case 1:
+                    System.out.println("Choose account type: \n 1. Savings Account \n 2. Current Account");
+                    int accType = Integer.parseInt(sc5.next()); // Read as String and parse to int
+                    if (accType == 1) {
+                        accounts[accountCount] = new SavingsAccount();
+                    } else if (accType == 2) {
+                        accounts[accountCount] = new CurrentAccount();
+                    }
+                    accounts[accountCount].inputCustData();
+                    accountCount++;
+                    break;
+
+                case 2:
+                    System.out.println("Enter account number: ");
+                    int accNum = sc5.nextInt();
+                    boolean found = false;
+                    for (int i = 0; i < accountCount; i++) {
+                        if (accounts[i].accNum == accNum) {
+                            accounts[i].showCustData();
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        System.out.println("Account not found.");
+                    }
+                    break;
+
+                case 3:
+                    System.out.println("Enter account number for Savings Account: ");
+                    int accNumSavings = sc5.nextInt();
+                    boolean foundSavings = false;
+                    for (int i = 0; i < accountCount; i++) {
+                        if (accounts[i].accNum == accNumSavings && accounts[i] instanceof SavingsAccount) {
+                            SavingsAccount sa = (SavingsAccount) accounts[i];
+                            System.out.println(
+                                    "Select option:\n 1. Deposit \n 2. Withdraw \n 3. Apply for loan \n 4. Exit");
+                            int chSavings = sc5.nextInt();
+                            if (chSavings == 1) {
+                                sa.deposit(0.0); // Pass a default value, you can modify as per your requirements
+                            } else if (chSavings == 2) {
+                                sa.withdraw(0.0); // Pass a default value, you can modify as per your requirements
+                            } else if (chSavings == 3) {
+                                sa.loan(0.0); // Pass a default value, you can modify as per your requirements
+                            } else {
+                                break;
+                            }
+                            foundSavings = true;
+                            break;
+                        }
+                    }
+                    if (!foundSavings) {
+                        System.out.println("Savings Account not found.");
+                    }
+                    break;
+
+                case 4:
+                    System.out.println("Enter account number for Current Account: ");
+                    int accNumCurrent = sc5.nextInt();
+                    boolean foundCurrent = false;
+                    for (int i = 0; i < accountCount; i++) {
+                        if (accounts[i].accNum == accNumCurrent && accounts[i] instanceof CurrentAccount) {
+                            CurrentAccount ca = (CurrentAccount) accounts[i];
+                            System.out.println(
+                                    "Select option:\n 1. Deposit \n 2. Withdraw \n 3. Apply for loan \n 4. Exit");
+                            int chCurrent = sc5.nextInt();
+                            if (chCurrent == 1) {
+                                ca.deposit(0.0); // Pass a default value, you can modify as per your requirements
+                            } else if (chCurrent == 2) {
+                                ca.withdraw(0.0); // Pass a default value, you can modify as per your requirements
+                            } else if (chCurrent == 3) {
+                                ca.loan(0.0); // Pass a default value, you can modify as per your requirements
+                            } else {
+                                break;
+                            }
+                            foundCurrent = true;
+                            break;
+                        }
+                    }
+                    if (!foundCurrent) {
+                        System.out.println("Current Account not found.");
+                    }
+                    break;
+
+                case 5:
+                    System.out.println(
+                            "Select account number for interest application:\n 1. Savings Account \n 2. Current Account");
+                    int accTypeInterest = sc5.nextInt();
+
+                    if (accTypeInterest == 1) {
+                        System.out.println("Enter account number for Savings Account: ");
+                        int accNumInterestSavings = sc5.nextInt();
+                        boolean foundInterestSavings = false;
+                        for (int i = 0; i < accountCount; i++) {
+                            if (accounts[i].accNum == accNumInterestSavings && accounts[i] instanceof SavingsAccount) {
+                                SavingsAccount sa = (SavingsAccount) accounts[i];
+                                System.out.println("Before applying interest - Savings Account Balance: " + sa.balance);
+                                ir.applyInterest(sa);
+                                System.out.println("After applying interest - Savings Account Balance: " + sa.balance);
+                                foundInterestSavings = true;
+                                break;
+                            }
+                        }
+                        if (!foundInterestSavings) {
+                            System.out.println("Savings Account for interest not found.");
+                        }
+                    } else if (accTypeInterest == 2) {
+                        System.out.println("Enter account number for Current Account: ");
+                        int accNumInterestCurrent = sc5.nextInt();
+                        boolean foundInterestCurrent = false;
+                        for (int i = 0; i < accountCount; i++) {
+                            if (accounts[i].accNum == accNumInterestCurrent && accounts[i] instanceof CurrentAccount) {
+                                CurrentAccount ca = (CurrentAccount) accounts[i];
+                                System.out.println("Before applying interest - Current Account Balance: " + ca.balance);
+                                ir.applyInterest(ca);
+                                System.out.println("After applying interest - Current Account Balance: " + ca.balance);
+                                foundInterestCurrent = true;
+                                break;
+                            }
+                        }
+                        if (!foundInterestCurrent) {
+                            System.out.println("Current Account for interest not found.");
+                        }
+                    } else {
+                        break;
+                    }
+                    break;
+
+                case 6:
+                    System.out.println("Enter account number for NetBanking: ");
+                    int accNumNetBanking = sc5.nextInt();
+                    boolean foundNetBanking = false;
+                    for (int i = 0; i < accountCount; i++) {
+                        if (accounts[i].accNum == accNumNetBanking && accounts[i] instanceof NetBanking) {
+                            NetBanking nb = (NetBanking) accounts[i];
+                            ((NetBanking) nb).loginCredentials("", ""); // Pass empty strings, you can modify as per
+                                                                        // your requirements
+                            ((NetBanking) nb).deposit(0.0); // Pass a default value, you can modify as per your
+                                                            // requirements
+                            foundNetBanking = true;
+                            break;
+                        }
+                    }
+                    if (!foundNetBanking) {
+                        System.out.println("NetBanking Account not found.");
+                    }
+                    break;
+
+                case 7:
+                    System.exit(0); // Exit the program
+                    break;
+
+                default:
+                    System.out.println("Invalid choice. Please select a valid option.");
+            }
+        }
+    }
+}
